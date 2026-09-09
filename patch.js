@@ -16,8 +16,15 @@ draw=function(){
     location.replace("/want");
     return;
   }
-  try{ _draw(); }
-  catch(e){
+  try{
+    if(S.session&&typeof houseView==="function"&&houseView()&&typeof deskFilter!=="undefined"){
+      if(!window.__sableOpenedFloor){
+        window.__sableOpenedFloor=1;
+        deskFilter="all";
+      }
+    }
+    _draw();
+  }catch(e){
     try{
       if(!S.session){ root.innerHTML=Gate(); hookGate(); }
     }catch(err){}

@@ -22,6 +22,7 @@
     #root.is-on { visibility: visible; }
     body.js-on #door { display: none !important; }
     #door {
+      display: none;
       max-width: 420px;
       margin: 0 auto;
       padding: calc(48px + env(safe-area-inset-top, 0px)) 20px 40px;
@@ -227,7 +228,10 @@
         var root = document.getElementById("root");
         if (root && !root.classList.contains("is-on")) {
           var d = document.getElementById("door");
-          if (d) d.hidden = false;
+          if (d) {
+            d.style.display = "block";
+            d.hidden = false;
+          }
           document.body.classList.remove("js-on");
           var msg = document.getElementById("door-msg");
           if (msg) {
