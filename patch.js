@@ -38,6 +38,43 @@ draw=function(){
   }
 };
 
+if(typeof hookGate==="function"){
+  const _hookGate=hookGate;
+  hookGate=function(){
+    _hookGate();
+    const ask=document.getElementById("ask");
+    if(!ask) return;
+    ask.onsubmit=function(e){
+      e.preventDefault();
+      const f=Object.fromEntries(new FormData(ask));
+      if(typeof isHouse==="function"&&(isHouse(f.email)||isHouse(f.name))){
+        toast="House uses Set password on Log in.";
+        mode="in";
+        draw();
+        return;
+      }
+      const existing=(typeof findStaff==="function"&&(findStaff(f.email)||findStaff(f.name)))||null;
+      if(existing){
+        const err=setPhonePass(existing.email||String(f.email||"").trim(), String(f.password||""));
+        if(err){
+          gateEmail=existing.email||String(f.email||"").trim();
+          toast=err;
+          mode="reset";
+          draw();
+          return;
+        }
+        return;
+      }
+      S.requests=S.requests||[];
+      S.requests.push({name:String(f.name||"").trim(),email:String(f.email||"").trim(),password:String(f.password||""),seller:f.seller||"luan",status:"pending",at:Date.now()});
+      save();
+      toast="Request saved on this phone. Luan still has to put you on the floor before you can enter.";
+      mode="in";
+      draw();
+    };
+  };
+}
+
 if(typeof viewPerson==="function"){
   const _viewPerson=viewPerson;
   viewPerson=function(){
