@@ -353,8 +353,21 @@ async function sb(method, path, body) {
   if (body !== undefined) opts.body = JSON.stringify(body);
   const r = await fetch(SB_URL + "/rest/v1/" + path, opts);
   const text = await r.text();
-  if (!text) return r.ok ? [] : { code: "http", message: "empty " + r.status };
-  try { return JSON.parse(text); } catch (e) { return { code: "parse", message: text.slice(0, 200) }; }
+  let parsed = null;
+  if (text) {
+    try { parsed = JSON.parse(text); } catch (e) { parsed = { message: text.slice(0, 240) }; }
+  }
+  if (!r.ok) {
+    const msg = parsed && (parsed.message || parsed.error_description || parsed.error || parsed.hint);
+    return {
+      code: (parsed && parsed.code) || "http",
+      message: String(msg || ("http " + r.status)).slice(0, 300),
+      status: r.status,
+      details: parsed && parsed.details
+    };
+  }
+  if (!text) return [];
+  return parsed;
 }
 
 async function upsertRows(table, rows) {
@@ -422,7 +435,41 @@ async function findCloudLead(token) {
 
 async function upsertLeads(list) {
   const rows = (list || []).map(leadToRow).filter(Boolean);
-  return upsertRows("leads", rows);
+  let out = await upsertRows("leads", rows);
+  if (out && out.ok) return out;
+  const slim = rows.map(function (r) {
+    return {
+      id: r.id,
+      name: r.name,
+      phone: r.phone,
+      sku: r.sku,
+      look: r.look,
+      size: r.size,
+      qty: r.qty,
+      source: r.source,
+      status: r.status,
+      note: r.note,
+      items: r.items,
+      colour: r.colour,
+      delivery: r.delivery,
+      created_at: r.created_at,
+      updated_at: r.updated_at
+    };
+  });
+  out = await upsertRows("leads", slim);
+  if (out && out.ok) return out;
+  const bare = rows.map(function (r) {
+    return {
+      id: r.id,
+      name: r.name,
+      phone: r.phone,
+      sku: r.sku,
+      qty: r.qty,
+      note: r.note,
+      status: r.status || "new"
+    };
+  });
+  return upsertRows("leads", bare);
 }
 
 async function upsertMeetings(list) {
@@ -464,8 +511,12 @@ module.exports = async function handler(req, res) {
       const id = String(q.id || q.proof || "").trim();
       const ref = String(q.ref || "").trim();
       const book = await bookOf();
-      let leads = book.leads;
-      if (!leads.length && !book.cloud) leads = store.leads;
+      const byId = new Map();
+      (book.leads || []).forEach(function (l) { if (l && l.id) byId.set(l.id, l); });
+      (store.leads || []).forEach(function (l) { if (l && l.id && !byId.has(l.id)) byId.set(l.id, l); });
+      let leads = Array.from(byId.values()).sort(function (a, b) {
+        return Number(b.updatedAt || b.createdAt || 0) - Number(a.updatedAt || a.createdAt || 0);
+      });
       if (id) leads = leads.filter((l) => l && l.id === id);
       else if (ref) leads = leads.filter((l) => l && String(l.invRef || "") === ref);
       res.status(200).json({
@@ -473,7 +524,7 @@ module.exports = async function handler(req, res) {
         meetings: id || ref ? undefined : book.meetings,
         bank: id || ref ? undefined : book.bank,
         cloud: book.cloud,
-        imported: book.imported
+        imported: book.imported || leads.length > 0
       });
       return;
     }
@@ -488,8 +539,14 @@ module.exports = async function handler(req, res) {
       const lead = deskReady(Object.assign({}, b, { name, phone }), id());
       store.leads.unshift(lead);
       if (store.leads.length > 400) store.leads.length = 400;
-      if (cloudOn()) await upsertLeads([lead]);
-      res.status(201).json({ ok: true, lead: lead });
+      let cloudSave = { skipped: true };
+      if (cloudOn()) {
+        cloudSave = await upsertLeads([lead]);
+        if (!cloudSave || cloudSave.ok !== true) {
+          console.error("[sable] cloud save failed", cloudSave && cloudSave.error);
+        }
+      }
+      res.status(201).json({ ok: true, lead: lead, cloud: cloudOn(), cloudSave: cloudSave });
       return;
     }
     if (req.method === "PATCH") {
