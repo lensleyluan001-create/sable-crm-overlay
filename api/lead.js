@@ -23,6 +23,7 @@ function matchSellerLite(name) {
   if (q === "wian" || q.indexOf("wian") === 0) return "wian";
   if (q === "luan" || q.indexOf("luan") === 0) return "luan";
   if (q === "dylan" || q.indexOf("dylan") === 0) return "dylan";
+  if (q === "sgm" || q.indexOf("sgm") === 0 || q === "sablesgm1" || q === "sablesgm1@gmail.com") return "sgm";
   return null;
 }
 
@@ -30,7 +31,7 @@ function deskReady(b, newId) {
   const now = Date.now();
   const salesman = String(b.salesman || "").trim();
   const own = String(b.owner || "").trim().toLowerCase();
-  const owner = own === "wian" || own === "luan" || own === "dylan" ? own : matchSellerLite(salesman);
+  const owner = own === "wian" || own === "luan" || own === "dylan" || own === "sgm" ? own : matchSellerLite(salesman);
   const src = String(b.source || "website").trim() || "website";
   const lead = Object.assign({}, b, {
     id: newId,
@@ -207,7 +208,7 @@ function toMs(v) {
 
 function sellerOf(v) {
   const q = String(v || "").trim().toLowerCase();
-  return q === "luan" || q === "dylan" || q === "wian" ? q : null;
+  return q === "luan" || q === "dylan" || q === "wian" || q === "sgm" ? q : null;
 }
 
 function slimProof(url, id) {

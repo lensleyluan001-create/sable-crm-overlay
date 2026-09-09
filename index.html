@@ -132,10 +132,15 @@
       var PASS_REV = 2;
       function staffOf(id) {
         var qn = String(id || "").trim().toLowerCase().replace(/^@/, "");
-        if (!qn) return { email: "lensleyluan001@gmail.com", name: "Luan Lensley", role: "admin", seller: "luan" };
+        if (!qn || qn === "luan" || qn.indexOf("luan") === 0 || qn === "lensleyluan001@gmail.com" || qn.indexOf("lensleyluan001") === 0) {
+          return { email: "lensleyluan001@gmail.com", name: "Luan Lensley", role: "admin", seller: "luan" };
+        }
         if (qn.indexOf("dylan") === 0 || qn === "dylan.do80@gmail.com") return { email: "dylan.do80@gmail.com", name: "Dylan", role: "sales", seller: "dylan" };
         if (qn.indexOf("wian") === 0) return { email: "wian", name: "Wian", role: "sales", seller: "wian" };
-        return { email: "lensleyluan001@gmail.com", name: "Luan Lensley", role: "admin", seller: "luan" };
+        if (qn === "sgm" || qn.indexOf("sgm") === 0 || qn === "sablesgm1" || qn === "sablesgm1@gmail.com") {
+          return { email: "sablesgm1@gmail.com", name: "SGM", role: "sales", seller: "sgm" };
+        }
+        return null;
       }
       function samePass(a, b) {
         return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
@@ -191,6 +196,7 @@
         }
         if (!pass) { fail("Type a password."); return; }
         var who = staffOf(id);
+        if (!who) { fail("Not on the floor. Use Luan, Dylan, Wian or SGM."); return; }
         if (!hasPass(pack)) {
           if (pass.length < 8) { fail("Eight characters or more."); return; }
           var users = pack.users || [];
@@ -250,11 +256,11 @@
       navigator.serviceWorker.register("/sw.js?v=20260906sentry").catch(function () {});
     }
   </script>
-  <script src="https://cdn.jsdelivr.net/gh/lensleyluan001-create/sable-desk-js@28ca880f9140ff4291ef124c8727ffb8bdca6944/catalog.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/lensleyluan001-create/sable-desk-js@28ca880f9140ff4291ef124c8727ffb8bdca6944/golf-tone.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/lensleyluan001-create/sable-desk-js@28ca880f9140ff4291ef124c8727ffb8bdca6944/core.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/lensleyluan001-create/sable-desk-js@28ca880f9140ff4291ef124c8727ffb8bdca6944/views.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/lensleyluan001-create/sable-desk-js@28ca880f9140ff4291ef124c8727ffb8bdca6944/boot.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/lensleyluan001-create/sable-desk-js@2512bbd050413356efaa402baffc69dda3f567fc/catalog.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/lensleyluan001-create/sable-desk-js@2512bbd050413356efaa402baffc69dda3f567fc/golf-tone.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/lensleyluan001-create/sable-desk-js@2512bbd050413356efaa402baffc69dda3f567fc/core.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/lensleyluan001-create/sable-desk-js@2512bbd050413356efaa402baffc69dda3f567fc/views.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/lensleyluan001-create/sable-desk-js@2512bbd050413356efaa402baffc69dda3f567fc/boot.js"></script>
   <script src="./patch.js?v=20260906sentry"></script>
 </body>
 </html>
