@@ -14,17 +14,17 @@
   "redirects": [
     {
       "source": "/want",
-      "destination": "https://sable-floor-web.vercel.app/",
+      "destination": "https://sable-floor-web.vercel.app/want",
       "permanent": false
     },
     {
       "source": "/want/",
-      "destination": "https://sable-floor-web.vercel.app/",
+      "destination": "https://sable-floor-web.vercel.app/want",
       "permanent": false
     },
     {
       "source": "/want.html",
-      "destination": "https://sable-floor-web.vercel.app/",
+      "destination": "https://sable-floor-web.vercel.app/want",
       "permanent": false
     },
     {

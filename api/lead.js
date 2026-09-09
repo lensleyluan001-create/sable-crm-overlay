@@ -54,10 +54,19 @@ function deskReady(b, newId) {
     proofStatus: String(b.proofStatus || ""),
     trackStage: (function () {
       const t = String(b.trackStage || "").trim().toLowerCase();
-      return t === "ready" || t === "dispatch" ? t : "";
+      if (t === "collect") return "ready";
+      if (t === "sent" || t === "delivery") return "dispatch";
+      if (t === "cut" || t === "last" || t === "stitch" || t === "qc" || t === "pack" || t === "ready" || t === "dispatch") return t;
+      return "";
     })()
   });
-  if (Array.isArray(b.items) && b.items.length) lead.items = b.items;
+  if (Array.isArray(b.items) && b.items.length) {
+    lead.items = b.items;
+    const n = b.items.reduce(function (sum, it) {
+      return sum + (Math.max(1, Number(it && it.qty || 1) || 1));
+    }, 0);
+    lead.qty = n || Math.max(1, Number(b.qty || 1) || 1);
+  }
   return lead;
 }
 
@@ -115,6 +124,8 @@ function publicOrder(l) {
   const qty = items.reduce(function (n, it) { return n + it.qty; }, 0) || 1;
   const send = l.delivery === "local" || l.delivery === "int";
   const raw = String(l.trackStage || "").trim().toLowerCase();
+  const factory = raw === "cut" || raw === "last" || raw === "stitch" || raw === "qc" || raw === "pack" ? raw : "";
+  const factoryLab = { cut: "Cut", last: "On the last", stitch: "Stitching", qc: "QC", pack: "Pack" };
   let flag = raw === "ready" || raw === "collect" ? "ready" : raw === "dispatch" || raw === "sent" || raw === "delivery" ? "dispatch" : "";
   const na = String(l.nextAction || "");
   if (!flag && /out for delivery|dispatched|on the way|sent with courier/i.test(na)) flag = "dispatch";
@@ -129,8 +140,8 @@ function publicOrder(l) {
   const received = ((fresh || (st === "contacted" && !sized)) && !invoiced && !paid && !flag && !closedPaid) ? "now" : "done";
   let making = "wait";
   if (received === "now") making = "wait";
-  else if (closedPaid || paid || flag || invoiced) making = "done";
-  else if (!fresh || sized) making = "now";
+  else if (closedPaid || flag) making = "done";
+  else if (factory || paid || invoiced || !fresh || sized) making = "now";
   let payment = "wait";
   const payNow = (invoiced || hasProofLite(l)) && !paid;
   if (paid) payment = "done";
@@ -142,9 +153,10 @@ function publicOrder(l) {
   const finished = closedPaid ? "done" : "wait";
   const payLabel = paid ? "Payment received" : "Waiting for payment";
   const readyLabel = send ? "Out for delivery" : "Ready for collect";
+  const makingLabel = factory ? factoryLab[factory] : (qty > 1 ? "Making your pairs" : "Making your pair");
   const steps = [
     { id: "received", label: "Order received", state: received },
-    { id: "making", label: qty > 1 ? "Making your pairs" : "Making your pair", state: lost ? "wait" : making },
+    { id: "making", label: makingLabel, state: lost ? "wait" : making },
     { id: "payment", label: payLabel, state: lost ? "wait" : payment },
     { id: "ready", label: readyLabel, state: lost ? "wait" : ready },
     { id: "done", label: "Done", state: lost ? "wait" : finished }
@@ -156,7 +168,7 @@ function publicOrder(l) {
   else if (ready === "now") headline = readyLabel + ".";
   else if (paid) headline = "Payment received. We will tell you when it is ready.";
   else if (payment === "now") headline = "Waiting for payment.";
-  else if (making === "now") headline = qty > 1 ? "We are making your pairs." : "We are making your pair.";
+  else if (making === "now") headline = factory ? (factoryLab[factory] + ".") : (qty > 1 ? "We are making your pairs." : "We are making your pair.");
   else headline = "We have your order.";
   return {
     name: String(l.name || "").trim().split(/\s+/)[0] || "Your order",
@@ -519,6 +531,12 @@ module.exports = async function handler(req, res) {
       });
       if (id) leads = leads.filter((l) => l && l.id === id);
       else if (ref) leads = leads.filter((l) => l && String(l.invRef || "") === ref);
+      else {
+        leads = leads.filter(function (l) {
+          const n = String(l && l.name || "").trim().toLowerCase();
+          return n !== "thabo desk" && !/^probe\b/.test(n);
+        });
+      }
       res.status(200).json({
         leads: leads,
         meetings: id || ref ? undefined : book.meetings,
