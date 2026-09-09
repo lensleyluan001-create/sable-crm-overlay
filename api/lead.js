@@ -1,4 +1,4 @@
-const SEED = [];
+const SEED = [{"id":"ld-xofvgubq","name":"Oom IG","phone":"0828060661","sku":"45046","look":"Vellie","size":"10","qty":2,"items":[{"sku":"45046","look":"Vellie","size":"10","qty":2,"colour":"book","extras":{"laser":false,"laserPhoto":"","laces":false,"laceColour":"natural","stitch":false,"stitchColour":"cream","custom":false,"customNote":"","customFee":0},"listedPrice":null,"listed":699}],"source":"instagram","status":"contacted","note":"","owner":"luan","salesman":"","paid":false,"paidAmount":0,"delivery":"collect","deliveryFee":0,"colour":"book","extras":{"laser":false,"laserPhoto":"","laces":false,"laceColour":"natural","stitch":false,"stitchColour":"cream","custom":false,"customNote":"","customFee":0},"listedPrice":null,"nextAction":"Chase the EFT","nextActionAt":null,"invRef":"SBL-45046-GUBQ","createdAt":1788416679424,"updatedAt":1788538216037,"sitAt":1788538190884},{"id":"ld-9ld8bo8x","name":"Cybry","phone":"0794550549","sku":"45017","look":"Vellie","size":"11","qty":1,"items":[{"sku":"45017","look":"Vellie","size":"11","qty":1,"colour":"tan","extras":{"laser":false,"laserPhoto":"","laces":false,"laceColour":"natural","stitch":false,"stitchColour":"cream","custom":false,"customNote":"","customFee":0},"listedPrice":null,"listed":799}],"source":"website","status":"closed","note":"","owner":"luan","salesman":"","paid":true,"paidAmount":0,"delivery":"collect","deliveryFee":0,"colour":"tan","extras":{"laser":false,"laserPhoto":"","laces":false,"laceColour":"natural","stitch":false,"stitchColour":"cream","custom":false,"customNote":"","customFee":0},"listedPrice":null,"nextAction":"Closed. Paid.","nextActionAt":null,"invRef":"","createdAt":1788413965126,"updatedAt":1788457902868,"sitAt":1788457902868},{"id":"ld-m194gybd","name":"Oom IG","phone":"0828060661","sku":"45046","look":"Vellie","size":"11","qty":2,"items":[{"sku":"45046","look":"Vellie","size":"11","qty":2,"colour":"book","extras":{"laser":false,"laserPhoto":"","laces":false,"laceColour":"natural","stitch":false,"stitchColour":"cream","custom":false,"customNote":"","customFee":0},"listedPrice":null,"listed":699}],"source":"whatsapp","status":"lost","note":"Agreed R1050 total delivery included. Invoice by hand. First WhatsApp not sent.","owner":"luan","salesman":"","paid":false,"paidAmount":0,"delivery":"collect","deliveryFee":0,"colour":"book","extras":{"laser":false,"laserPhoto":"","laces":false,"laceColour":"natural","stitch":false,"stitchColour":"cream","custom":false,"customNote":"","customFee":0},"listedPrice":null,"nextAction":"Lost","nextActionAt":null,"invRef":"","createdAt":1788416035524,"updatedAt":1788461123727,"sitAt":1788416155755},{"id":"ld-3ccomagx","name":"Luan Iphone","phone":"+27826001950","sku":"45001","look":"Vellie","size":"11","qty":1,"items":[{"sku":"45001","look":"Vellie","size":"11","qty":1,"colour":"black","extras":{"laser":false,"laserPhoto":"","laces":false,"laceColour":"natural","stitch":false,"stitchColour":"cream","custom":false,"customNote":"","customFee":0},"listedPrice":350,"listed":350}],"source":"website","status":"closed","note":"","owner":"luan","salesman":"","paid":true,"paidAmount":0,"delivery":"collect","deliveryFee":0,"colour":"black","extras":{"laser":false,"laserPhoto":"","laces":false,"laceColour":"natural","stitch":false,"stitchColour":"cream","custom":false,"customNote":"","customFee":0},"listedPrice":350,"nextAction":"Closed.","nextActionAt":null,"invRef":"","createdAt":1788382065968,"updatedAt":1788382138436,"sitAt":1788382138436}];
 const store = globalThis.__sableLeads || { leads: [] };
 globalThis.__sableLeads = store;
 if (!store.leads.length && SEED.length) {
@@ -501,6 +501,32 @@ async function deleteMeeting(id) {
   return { ok: true };
 }
 
+
+function hasVal(v) {
+  if (v == null) return false;
+  if (typeof v === "boolean") return v;
+  if (typeof v === "number") return true;
+  return String(v).trim() !== "";
+}
+function fillLead(primary, fallback) {
+  if (!primary) return fallback;
+  if (!fallback) return primary;
+  const out = Object.assign({}, fallback, primary);
+  ["owner", "salesman", "nextAction", "invRef", "note", "nextActionAt"].forEach(function (k) {
+    if (!hasVal(primary[k]) && hasVal(fallback[k])) out[k] = fallback[k];
+  });
+  if (!(Number(primary.listedPrice) > 0) && Number(fallback.listedPrice) > 0) out.listedPrice = fallback.listedPrice;
+  if (!primary.paid && fallback.paid) out.paid = true;
+  if ((!primary.items || !primary.items.length) && fallback.items && fallback.items.length) out.items = fallback.items;
+  if (!Number(primary.qty) && Number(fallback.qty)) out.qty = fallback.qty;
+  return out;
+}
+function takeLead(map, l) {
+  if (!l || !l.id) return;
+  const prev = map.get(l.id);
+  map.set(l.id, prev ? fillLead(l, prev) : l);
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,PUT,DELETE,OPTIONS");
@@ -524,8 +550,9 @@ module.exports = async function handler(req, res) {
       const ref = String(q.ref || "").trim();
       const book = await bookOf();
       const byId = new Map();
-      (book.leads || []).forEach(function (l) { if (l && l.id) byId.set(l.id, l); });
-      (store.leads || []).forEach(function (l) { if (l && l.id && !byId.has(l.id)) byId.set(l.id, l); });
+      (SEED || []).forEach(function (l) { takeLead(byId, l); });
+      (store.leads || []).forEach(function (l) { takeLead(byId, l); });
+      (book.leads || []).forEach(function (l) { takeLead(byId, l); });
       let leads = Array.from(byId.values()).sort(function (a, b) {
         return Number(b.updatedAt || b.createdAt || 0) - Number(a.updatedAt || a.createdAt || 0);
       });
