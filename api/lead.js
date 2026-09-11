@@ -1,4 +1,5 @@
-const SEED = [{"id":"ld-xofvgubq","name":"Oom IG","phone":"0828060661","sku":"45046","look":"Vellie","size":"10","qty":2,"items":[{"sku":"45046","look":"Vellie","size":"10","qty":2,"colour":"book","extras":{"laser":false,"laserPhoto":"","laces":false,"laceColour":"natural","stitch":false,"stitchColour":"cream","custom":false,"customNote":"","customFee":0},"listedPrice":null,"listed":699}],"source":"instagram","status":"contacted","note":"","owner":"luan","salesman":"","paid":false,"paidAmount":0,"delivery":"collect","deliveryFee":0,"colour":"book","extras":{"laser":false,"laserPhoto":"","laces":false,"laceColour":"natural","stitch":false,"stitchColour":"cream","custom":false,"customNote":"","customFee":0},"listedPrice":null,"nextAction":"Chase the EFT","nextActionAt":null,"invRef":"SBL-45046-GUBQ","createdAt":1788416679424,"updatedAt":1788538216037,"sitAt":1788538190884},{"id":"ld-9ld8bo8x","name":"Cybry","phone":"0794550549","sku":"45017","look":"Vellie","size":"11","qty":1,"items":[{"sku":"45017","look":"Vellie","size":"11","qty":1,"colour":"tan","extras":{"laser":false,"laserPhoto":"","laces":false,"laceColour":"natural","stitch":false,"stitchColour":"cream","custom":false,"customNote":"","customFee":0},"listedPrice":null,"listed":799}],"source":"website","status":"closed","note":"","owner":"luan","salesman":"","paid":true,"paidAmount":0,"delivery":"collect","deliveryFee":0,"colour":"tan","extras":{"laser":false,"laserPhoto":"","laces":false,"laceColour":"natural","stitch":false,"stitchColour":"cream","custom":false,"customNote":"","customFee":0},"listedPrice":null,"nextAction":"Closed. Paid.","nextActionAt":null,"invRef":"","createdAt":1788413965126,"updatedAt":1788457902868,"sitAt":1788457902868},{"id":"ld-m194gybd","name":"Oom IG","phone":"0828060661","sku":"45046","look":"Vellie","size":"11","qty":2,"items":[{"sku":"45046","look":"Vellie","size":"11","qty":2,"colour":"book","extras":{"laser":false,"laserPhoto":"","laces":false,"laceColour":"natural","stitch":false,"stitchColour":"cream","custom":false,"customNote":"","customFee":0},"listedPrice":null,"listed":699}],"source":"whatsapp","status":"lost","note":"Agreed R1050 total delivery included. Invoice by hand. First WhatsApp not sent.","owner":"luan","salesman":"","paid":false,"paidAmount":0,"delivery":"collect","deliveryFee":0,"colour":"book","extras":{"laser":false,"laserPhoto":"","laces":false,"laceColour":"natural","stitch":false,"stitchColour":"cream","custom":false,"customNote":"","customFee":0},"listedPrice":null,"nextAction":"Lost","nextActionAt":null,"invRef":"","createdAt":1788416035524,"updatedAt":1788461123727,"sitAt":1788416155755},{"id":"ld-3ccomagx","name":"Luan Iphone","phone":"+27826001950","sku":"45001","look":"Vellie","size":"11","qty":1,"items":[{"sku":"45001","look":"Vellie","size":"11","qty":1,"colour":"black","extras":{"laser":false,"laserPhoto":"","laces":false,"laceColour":"natural","stitch":false,"stitchColour":"cream","custom":false,"customNote":"","customFee":0},"listedPrice":350,"listed":350}],"source":"website","status":"closed","note":"","owner":"luan","salesman":"","paid":true,"paidAmount":0,"delivery":"collect","deliveryFee":0,"colour":"black","extras":{"laser":false,"laserPhoto":"","laces":false,"laceColour":"natural","stitch":false,"stitchColour":"cream","custom":false,"customNote":"","customFee":0},"listedPrice":350,"nextAction":"Closed.","nextActionAt":null,"invRef":"","createdAt":1788382065968,"updatedAt":1788382138436,"sitAt":1788382138436}];
+const SEED = [];
+
 const store = globalThis.__sableLeads || { leads: [] };
 globalThis.__sableLeads = store;
 if (!store.leads.length && SEED.length) {
@@ -23,7 +24,6 @@ function matchSellerLite(name) {
   if (q === "wian" || q.indexOf("wian") === 0) return "wian";
   if (q === "luan" || q.indexOf("luan") === 0) return "luan";
   if (q === "dylan" || q.indexOf("dylan") === 0) return "dylan";
-  if (q === "sgm" || q.indexOf("sgm") === 0 || q === "sablesgm1" || q === "sablesgm1@gmail.com") return "sgm";
   return null;
 }
 
@@ -31,7 +31,7 @@ function deskReady(b, newId) {
   const now = Date.now();
   const salesman = String(b.salesman || "").trim();
   const own = String(b.owner || "").trim().toLowerCase();
-  const owner = own === "wian" || own === "luan" || own === "dylan" || own === "sgm" ? own : matchSellerLite(salesman);
+  const owner = own === "wian" || own === "luan" || own === "dylan" ? own : matchSellerLite(salesman);
   const src = String(b.source || "website").trim() || "website";
   const lead = Object.assign({}, b, {
     id: newId,
@@ -55,19 +55,10 @@ function deskReady(b, newId) {
     proofStatus: String(b.proofStatus || ""),
     trackStage: (function () {
       const t = String(b.trackStage || "").trim().toLowerCase();
-      if (t === "collect") return "ready";
-      if (t === "sent" || t === "delivery") return "dispatch";
-      if (t === "cut" || t === "last" || t === "stitch" || t === "qc" || t === "pack" || t === "ready" || t === "dispatch") return t;
-      return "";
+      return t === "ready" || t === "dispatch" ? t : "";
     })()
   });
-  if (Array.isArray(b.items) && b.items.length) {
-    lead.items = b.items;
-    const n = b.items.reduce(function (sum, it) {
-      return sum + (Math.max(1, Number(it && it.qty || 1) || 1));
-    }, 0);
-    lead.qty = n || Math.max(1, Number(b.qty || 1) || 1);
-  }
+  if (Array.isArray(b.items) && b.items.length) lead.items = b.items;
   return lead;
 }
 
@@ -125,8 +116,6 @@ function publicOrder(l) {
   const qty = items.reduce(function (n, it) { return n + it.qty; }, 0) || 1;
   const send = l.delivery === "local" || l.delivery === "int";
   const raw = String(l.trackStage || "").trim().toLowerCase();
-  const factory = raw === "cut" || raw === "last" || raw === "stitch" || raw === "qc" || raw === "pack" ? raw : "";
-  const factoryLab = { cut: "Cut", last: "On the last", stitch: "Stitching", qc: "QC", pack: "Pack" };
   let flag = raw === "ready" || raw === "collect" ? "ready" : raw === "dispatch" || raw === "sent" || raw === "delivery" ? "dispatch" : "";
   const na = String(l.nextAction || "");
   if (!flag && /out for delivery|dispatched|on the way|sent with courier/i.test(na)) flag = "dispatch";
@@ -141,8 +130,8 @@ function publicOrder(l) {
   const received = ((fresh || (st === "contacted" && !sized)) && !invoiced && !paid && !flag && !closedPaid) ? "now" : "done";
   let making = "wait";
   if (received === "now") making = "wait";
-  else if (closedPaid || flag) making = "done";
-  else if (factory || paid || invoiced || !fresh || sized) making = "now";
+  else if (closedPaid || paid || flag || invoiced) making = "done";
+  else if (!fresh || sized) making = "now";
   let payment = "wait";
   const payNow = (invoiced || hasProofLite(l)) && !paid;
   if (paid) payment = "done";
@@ -154,10 +143,9 @@ function publicOrder(l) {
   const finished = closedPaid ? "done" : "wait";
   const payLabel = paid ? "Payment received" : "Waiting for payment";
   const readyLabel = send ? "Out for delivery" : "Ready for collect";
-  const makingLabel = factory ? factoryLab[factory] : (qty > 1 ? "Making your pairs" : "Making your pair");
   const steps = [
     { id: "received", label: "Order received", state: received },
-    { id: "making", label: makingLabel, state: lost ? "wait" : making },
+    { id: "making", label: qty > 1 ? "Making your pairs" : "Making your pair", state: lost ? "wait" : making },
     { id: "payment", label: payLabel, state: lost ? "wait" : payment },
     { id: "ready", label: readyLabel, state: lost ? "wait" : ready },
     { id: "done", label: "Done", state: lost ? "wait" : finished }
@@ -169,7 +157,7 @@ function publicOrder(l) {
   else if (ready === "now") headline = readyLabel + ".";
   else if (paid) headline = "Payment received. We will tell you when it is ready.";
   else if (payment === "now") headline = "Waiting for payment.";
-  else if (making === "now") headline = factory ? (factoryLab[factory] + ".") : (qty > 1 ? "We are making your pairs." : "We are making your pair.");
+  else if (making === "now") headline = qty > 1 ? "We are making your pairs." : "We are making your pair.";
   else headline = "We have your order.";
   return {
     name: String(l.name || "").trim().split(/\s+/)[0] || "Your order",
@@ -208,7 +196,7 @@ function toMs(v) {
 
 function sellerOf(v) {
   const q = String(v || "").trim().toLowerCase();
-  return q === "luan" || q === "dylan" || q === "wian" || q === "sgm" ? q : null;
+  return q === "luan" || q === "dylan" || q === "wian" ? q : null;
 }
 
 function slimProof(url, id) {
@@ -232,8 +220,8 @@ function leadToRow(l) {
     source: String(l.source || "whatsapp"),
     status: String(l.status || "new"),
     note: String(l.note || ""),
-    owner: sellerOf(l.owner),
-    salesman: String(l.salesman || ""),
+    owner: sellerOf(l.owner) || sellerOf(l.salesman),
+    salesman: sellerOf(l.salesman) || sellerOf(l.owner),
     paid: !!l.paid,
     paid_amount: Number(l.paidAmount || 0) || 0,
     delivery: String(l.delivery || "collect"),
@@ -245,9 +233,7 @@ function leadToRow(l) {
     next_action_at: toIso(l.nextActionAt),
     proof_url: slimProof(l.proofUrl, id),
     proof_at: toIso(l.proofAt),
-    proof_by: String(l.proofBy || ""),
     proof_status: String(l.proofStatus || ""),
-    track_stage: String(l.trackStage || ""),
     items: Array.isArray(l.items) ? l.items : [],
     extras: l.extras && typeof l.extras === "object" ? l.extras : {},
     created_at: toIso(l.createdAt) || new Date().toISOString(),
@@ -366,21 +352,8 @@ async function sb(method, path, body) {
   if (body !== undefined) opts.body = JSON.stringify(body);
   const r = await fetch(SB_URL + "/rest/v1/" + path, opts);
   const text = await r.text();
-  let parsed = null;
-  if (text) {
-    try { parsed = JSON.parse(text); } catch (e) { parsed = { message: text.slice(0, 240) }; }
-  }
-  if (!r.ok) {
-    const msg = parsed && (parsed.message || parsed.error_description || parsed.error || parsed.hint);
-    return {
-      code: (parsed && parsed.code) || "http",
-      message: String(msg || ("http " + r.status)).slice(0, 300),
-      status: r.status,
-      details: parsed && parsed.details
-    };
-  }
-  if (!text) return [];
-  return parsed;
+  if (!text) return r.ok ? [] : { code: "http", message: "empty " + r.status };
+  try { return JSON.parse(text); } catch (e) { return { code: "parse", message: text.slice(0, 200) }; }
 }
 
 async function upsertRows(table, rows) {
@@ -448,41 +421,78 @@ async function findCloudLead(token) {
 
 async function upsertLeads(list) {
   const rows = (list || []).map(leadToRow).filter(Boolean);
-  let out = await upsertRows("leads", rows);
-  if (out && out.ok) return out;
-  const slim = rows.map(function (r) {
-    return {
-      id: r.id,
-      name: r.name,
-      phone: r.phone,
-      sku: r.sku,
-      look: r.look,
-      size: r.size,
-      qty: r.qty,
-      source: r.source,
-      status: r.status,
-      note: r.note,
-      items: r.items,
-      colour: r.colour,
-      delivery: r.delivery,
-      created_at: r.created_at,
-      updated_at: r.updated_at
-    };
+  return upsertRows("leads", rows);
+}
+
+/** Column-scoped PATCH so owner/salesman/next_action always hit Supabase without full-row wipe. */
+async function patchCloudLead(id, patch) {
+  const leadId = String(id || "").trim();
+  if (!leadId || !cloudOn()) return { ok: false, error: "no cloud" };
+  const src = patch && typeof patch === "object" ? patch : {};
+  const row = {};
+  if (Object.prototype.hasOwnProperty.call(src, "owner") || Object.prototype.hasOwnProperty.call(src, "salesman")) {
+    const own = sellerOf(src.owner) || sellerOf(src.salesman);
+    row.owner = own;
+    row.salesman = own;
+  }
+  const map = [
+    ["name", "name"],
+    ["phone", "phone"],
+    ["sku", "sku"],
+    ["look", "look"],
+    ["size", "size"],
+    ["qty", "qty"],
+    ["source", "source"],
+    ["status", "status"],
+    ["note", "note"],
+    ["paid", "paid"],
+    ["paidAmount", "paid_amount"],
+    ["delivery", "delivery"],
+    ["deliveryFee", "delivery_fee"],
+    ["colour", "colour"],
+    ["listedPrice", "listed_price"],
+    ["invRef", "inv_ref"],
+    ["nextAction", "next_action"],
+    ["nextActionAt", "next_action_at"],
+    ["proofUrl", "proof_url"],
+    ["proofAt", "proof_at"],
+    ["proofStatus", "proof_status"],
+    ["items", "items"],
+    ["extras", "extras"],
+    ["sitAt", "sit_at"],
+    ["updatedAt", "updated_at"],
+    ["createdAt", "created_at"]
+  ];
+  map.forEach(function (pair) {
+    const from = pair[0], to = pair[1];
+    if (!Object.prototype.hasOwnProperty.call(src, from)) return;
+    if (to === "next_action_at" || to === "proof_at" || to === "sit_at" || to === "updated_at" || to === "created_at") {
+      row[to] = toIso(src[from]);
+      return;
+    }
+    if (to === "paid") { row[to] = !!src[from]; return; }
+    if (to === "qty") { row[to] = Math.max(1, Number(src[from] || 1) || 1); return; }
+    if (to === "delivery_fee" || to === "paid_amount") { row[to] = Number(src[from] || 0) || 0; return; }
+    if (to === "listed_price") {
+      row[to] = src[from] == null || src[from] === "" ? null : Number(src[from]);
+      return;
+    }
+    if (to === "proof_url") { row[to] = slimProof(src[from], leadId); return; }
+    if (to === "items") { row[to] = Array.isArray(src[from]) ? src[from] : []; return; }
+    if (to === "extras") { row[to] = src[from] && typeof src[from] === "object" ? src[from] : {}; return; }
+    row[to] = src[from];
   });
-  out = await upsertRows("leads", slim);
-  if (out && out.ok) return out;
-  const bare = rows.map(function (r) {
-    return {
-      id: r.id,
-      name: r.name,
-      phone: r.phone,
-      sku: r.sku,
-      qty: r.qty,
-      note: r.note,
-      status: r.status || "new"
-    };
-  });
-  return upsertRows("leads", bare);
+  if (!Object.prototype.hasOwnProperty.call(row, "updated_at")) row.updated_at = new Date().toISOString();
+  // Always force owner columns when present on patch intent
+  if (Object.prototype.hasOwnProperty.call(src, "owner") || Object.prototype.hasOwnProperty.call(src, "salesman")) {
+    const own = sellerOf(src.owner) || sellerOf(src.salesman) || sellerOf(row.owner);
+    row.owner = own;
+    row.salesman = own;
+  }
+  const data = await sb("PATCH", "leads?id=eq." + encodeURIComponent(leadId), row);
+  if (data && data.__offline) return data;
+  if (data && data.code) return { ok: false, error: data.message || data.code, row: row };
+  return { ok: true, rows: data, row: row };
 }
 
 async function upsertMeetings(list) {
@@ -500,32 +510,6 @@ async function deleteMeeting(id) {
   if (!mid || !cloudOn()) return { ok: false };
   await sb("DELETE", "meetings?id=eq." + encodeURIComponent(mid));
   return { ok: true };
-}
-
-
-function hasVal(v) {
-  if (v == null) return false;
-  if (typeof v === "boolean") return v;
-  if (typeof v === "number") return true;
-  return String(v).trim() !== "";
-}
-function fillLead(primary, fallback) {
-  if (!primary) return fallback;
-  if (!fallback) return primary;
-  const out = Object.assign({}, fallback, primary);
-  ["owner", "salesman", "nextAction", "invRef", "note", "nextActionAt"].forEach(function (k) {
-    if (!hasVal(primary[k]) && hasVal(fallback[k])) out[k] = fallback[k];
-  });
-  if (!(Number(primary.listedPrice) > 0) && Number(fallback.listedPrice) > 0) out.listedPrice = fallback.listedPrice;
-  if (!primary.paid && fallback.paid) out.paid = true;
-  if ((!primary.items || !primary.items.length) && fallback.items && fallback.items.length) out.items = fallback.items;
-  if (!Number(primary.qty) && Number(fallback.qty)) out.qty = fallback.qty;
-  return out;
-}
-function takeLead(map, l) {
-  if (!l || !l.id) return;
-  const prev = map.get(l.id);
-  map.set(l.id, prev ? fillLead(l, prev) : l);
 }
 
 module.exports = async function handler(req, res) {
@@ -550,27 +534,16 @@ module.exports = async function handler(req, res) {
       const id = String(q.id || q.proof || "").trim();
       const ref = String(q.ref || "").trim();
       const book = await bookOf();
-      const byId = new Map();
-      (SEED || []).forEach(function (l) { takeLead(byId, l); });
-      (store.leads || []).forEach(function (l) { takeLead(byId, l); });
-      (book.leads || []).forEach(function (l) { takeLead(byId, l); });
-      let leads = Array.from(byId.values()).sort(function (a, b) {
-        return Number(b.updatedAt || b.createdAt || 0) - Number(a.updatedAt || a.createdAt || 0);
-      });
+      let leads = book.leads;
+      if (!leads.length && !book.cloud) leads = store.leads;
       if (id) leads = leads.filter((l) => l && l.id === id);
       else if (ref) leads = leads.filter((l) => l && String(l.invRef || "") === ref);
-      else {
-        leads = leads.filter(function (l) {
-          const n = String(l && l.name || "").trim().toLowerCase();
-          return n !== "thabo desk" && !/^probe\b/.test(n);
-        });
-      }
       res.status(200).json({
         leads: leads,
         meetings: id || ref ? undefined : book.meetings,
         bank: id || ref ? undefined : book.bank,
         cloud: book.cloud,
-        imported: book.imported || leads.length > 0
+        imported: book.imported
       });
       return;
     }
@@ -585,14 +558,8 @@ module.exports = async function handler(req, res) {
       const lead = deskReady(Object.assign({}, b, { name, phone }), id());
       store.leads.unshift(lead);
       if (store.leads.length > 400) store.leads.length = 400;
-      let cloudSave = { skipped: true };
-      if (cloudOn()) {
-        cloudSave = await upsertLeads([lead]);
-        if (!cloudSave || cloudSave.ok !== true) {
-          console.error("[sable] cloud save failed", cloudSave && cloudSave.error);
-        }
-      }
-      res.status(201).json({ ok: true, lead: lead, cloud: cloudOn(), cloudSave: cloudSave });
+      if (cloudOn()) await upsertLeads([lead]);
+      res.status(201).json({ ok: true, lead: lead });
       return;
     }
     if (req.method === "PATCH") {
@@ -601,13 +568,33 @@ module.exports = async function handler(req, res) {
         res.status(400).json({ ok: false });
         return;
       }
-      const i = store.leads.findIndex((l) => l.id === b.id);
-      if (i >= 0) store.leads[i] = Object.assign({}, store.leads[i], b, { id: store.leads[i].id });
-      const lead = i >= 0 ? store.leads[i] : b;
-      if (cloudOn()) await upsertLeads([lead]);
+      const id = String(b.id).trim();
+      let prev = null;
+      const i = store.leads.findIndex((l) => l && l.id === id);
+      if (i >= 0) prev = store.leads[i];
+      if (!prev && cloudOn()) prev = await findCloudLead(id);
+      const lead = Object.assign({}, prev || {}, b, {
+        id: id,
+        updatedAt: b.updatedAt || Date.now()
+      });
+      if (Object.prototype.hasOwnProperty.call(b, "owner") || Object.prototype.hasOwnProperty.call(b, "salesman")) {
+        const own = sellerOf(lead.owner) || sellerOf(lead.salesman) || sellerOf(b.owner) || sellerOf(b.salesman);
+        lead.owner = own;
+        lead.salesman = own || null;
+      }
+      if (i >= 0) store.leads[i] = lead;
+      else store.leads.unshift(lead);
+      if (cloudOn()) {
+        const up = await patchCloudLead(id, lead);
+        if (up && up.ok === false) {
+          res.status(500).json({ ok: false, error: up.error || "owner write failed", lead: lead });
+          return;
+        }
+      }
       res.status(200).json({ ok: true, lead: lead });
       return;
     }
+
     if (req.method === "PUT") {
       const b = readBody(req);
       if (b && b.deleteMeeting) {
