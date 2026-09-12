@@ -419,8 +419,47 @@ async function findCloudLead(token) {
   return hit ? leadFromRow(hit) : null;
 }
 
+
+/** Server merge: never clobber paid=true / positive paid_amount with false/0 unless explicit intent. */
+function protectPaid(existing, incoming) {
+  if (!incoming || typeof incoming !== "object") return incoming;
+  if (!existing || typeof existing !== "object") return incoming;
+  const out = Object.assign({}, incoming);
+  const exPaid = !!existing.paid;
+  const exAmt = Number(existing.paidAmount || existing.paid_amount || 0) || 0;
+  const inPaid = !!out.paid;
+  const inAmt = Number(out.paidAmount || out.paid_amount || 0) || 0;
+  const explicit =
+    out.paidClear === true ||
+    out.paidIntent === true ||
+    out.forcePaid === true ||
+    out.clearPaid === true;
+  if (!explicit && exPaid && !inPaid) {
+    out.paid = true;
+    if (!(inAmt > 0) && exAmt > 0) out.paidAmount = exAmt;
+  }
+  if (!explicit && exAmt > 0 && !(inAmt > 0)) {
+    out.paidAmount = exAmt;
+    if (exPaid) out.paid = true;
+  }
+  return out;
+}
+
 async function upsertLeads(list) {
-  const rows = (list || []).map(leadToRow).filter(Boolean);
+  let existing = [];
+  if (cloudOn()) {
+    try { existing = await fetchTable("leads"); } catch (e) { existing = []; }
+  }
+  const byId = {};
+  (existing || []).forEach(function (r) {
+    if (!r || !r.id) return;
+    byId[String(r.id)] = leadFromRow(r);
+  });
+  const merged = (list || []).map(function (l) {
+    if (!l || !l.id) return l;
+    return protectPaid(byId[String(l.id)], l);
+  });
+  const rows = merged.map(leadToRow).filter(Boolean);
   return upsertRows("leads", rows);
 }
 
