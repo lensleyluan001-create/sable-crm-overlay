@@ -18,6 +18,60 @@ function id() {
   return "ld-" + Math.random().toString(36).slice(2, 10);
 }
 
+
+const LEAD_SOURCES = ["organic_ig","organic_fb","whatsapp","enquire_web","stall_market","referral","self_made_meta","self_made_google","ads_meta","ads_google","ads_other","manual","import"];
+function mapLegacyLeadSource(src) {
+  const s = String(src || "").toLowerCase().trim();
+  if (!s) return "manual";
+  if (LEAD_SOURCES.indexOf(s) >= 0) return s;
+  if (s === "website" || s === "web" || s.indexOf("want") >= 0 || s.indexOf("lookbook") >= 0) return "enquire_web";
+  if (s === "instagram" || s === "ig" || s.indexOf("insta") >= 0) return "organic_ig";
+  if (s === "facebook" || s === "fb") return "organic_fb";
+  if (s === "whatsapp" || s === "wa") return "whatsapp";
+  if (s === "referral" || s === "refer") return "referral";
+  if (s === "walk-in" || s === "walkin" || s === "stall" || s === "market") return "stall_market";
+  if (s === "import") return "import";
+  return "manual";
+}
+function paymentCleared(l) {
+  if (!l) return false;
+  if (l.paid === true) return true;
+  const ps = String(l.proofStatus || l.proof_status || "").toLowerCase();
+  return (ps === "received" || ps === "cleared") && !!l.paid;
+}
+function statusCanon(st, l) {
+  const s = String(st || "").toLowerCase().trim();
+  if (s === "inbox") return "new";
+  if (s === "new") return "new";
+  if (s === "quoted" || s === "contacted" || s === "working" || s === "open") return "quoted";
+  if (s === "lost") return "lost";
+  if (s === "won") return "won";
+  if (s === "closed") return paymentCleared(l) ? "won" : "quoted";
+  return "quoted";
+}
+function gateWonStatus(st, l) {
+  const n = statusCanon(st, l);
+  if (n === "won" && !paymentCleared(l)) return "quoted";
+  return n;
+}
+function heatOfLead(l) {
+  const h = String(l && l.heat || "").toLowerCase();
+  if (h === "hot" || h === "warm" || h === "cold") return h;
+  const name = String(l && l.name || "").trim();
+  const phone = String(l && l.phone || "").trim();
+  const sku = String(l && l.sku || (l && l.items && l.items[0] && l.items[0].sku) || "").trim();
+  const size = String(l && l.size || (l && l.items && l.items[0] && l.items[0].size) || "").trim();
+  if (name && phone && sku && size) return "hot";
+  if (name && phone) return "warm";
+  return "cold";
+}
+function sameDayNextActionAt(from) {
+  const d = new Date(from || Date.now());
+  d.setHours(17, 0, 0, 0);
+  if (d.getTime() <= Date.now()) return new Date(Date.now() + 2 * 3600000).toISOString();
+  return d.toISOString();
+}
+
 function matchSellerLite(name) {
   const q = String(name || "").trim().toLowerCase();
   if (!q) return null;
@@ -33,17 +87,26 @@ function deskReady(b, newId) {
   const own = String(b.owner || "").trim().toLowerCase();
   const owner = own === "wian" || own === "luan" || own === "dylan" ? own : matchSellerLite(salesman);
   const src = String(b.source || "website").trim() || "website";
+  const leadSource = mapLegacyLeadSource(b.leadSource || b.lead_source || src);
+  const paid = !!b.paid;
+  const status = gateWonStatus(b.status || "new", Object.assign({}, b, { paid: paid }));
+  const heat = heatOfLead(Object.assign({}, b, { status: status, source: src, leadSource: leadSource }));
+  let nextActionAt = b.nextActionAt == null ? null : b.nextActionAt;
+  if (!nextActionAt && status === "new" && heat === "hot") nextActionAt = sameDayNextActionAt(now);
   const lead = Object.assign({}, b, {
     id: newId,
     name: String(b.name || "").trim(),
     phone: String(b.phone || "").trim(),
     source: src,
-    status: b.status || "new",
-    paid: !!b.paid,
+    leadSource: leadSource,
+    heat: heat,
+    status: status,
+    paid: paid,
     salesman: salesman,
     owner: owner || null,
-    nextAction: String(b.nextAction || "").trim() || (String(b.status || "new") === "new" ? "Send the first WhatsApp" : ""),
-    nextActionAt: b.nextActionAt == null ? null : b.nextActionAt,
+    lostReason: String(b.lostReason || b.lost_reason || "").trim(),
+    nextAction: String(b.nextAction || "").trim() || (status === "new" ? "Send the first WhatsApp" : ""),
+    nextActionAt: nextActionAt,
     sitAt: b.sitAt || now,
     createdAt: b.createdAt || now,
     updatedAt: b.updatedAt || now,
@@ -121,7 +184,7 @@ function publicOrder(l) {
   if (!flag && /out for delivery|dispatched|on the way|sent with courier/i.test(na)) flag = "dispatch";
   if (!flag && /ready for collect|ready to collect|ready for collection/i.test(na)) flag = "ready";
   const lost = String(l.status || "") === "lost";
-  const closedPaid = String(l.status || "") === "closed" && !!l.paid;
+  const closedPaid = (String(l.status || "") === "closed" || String(l.status || "") === "won") && !!l.paid;
   const paid = !!l.paid;
   const st = String(l.status || "new");
   const fresh = st === "new" || st === "inbox";
@@ -218,8 +281,11 @@ function leadToRow(l) {
     size: String(l.size || ""),
     qty: Math.max(1, Number(l.qty || 1) || 1),
     source: String(l.source || "whatsapp"),
-    status: String(l.status || "new"),
+    lead_source: mapLegacyLeadSource(l.leadSource || l.lead_source || l.source || "whatsapp"),
+    heat: heatOfLead(l),
+    status: gateWonStatus(l.status || "new", l),
     note: String(l.note || ""),
+    lost_reason: String(l.lostReason || l.lost_reason || ""),
     owner: sellerOf(l.owner) || sellerOf(l.salesman),
     salesman: sellerOf(l.salesman) || sellerOf(l.owner),
     paid: !!l.paid,
@@ -253,8 +319,11 @@ function leadFromRow(r) {
     size: r.size,
     qty: r.qty,
     source: r.source,
-    status: r.status,
+    leadSource: mapLegacyLeadSource(r.lead_source || r.leadSource || r.source || "manual"),
+    heat: r.heat || heatOfLead({ name: r.name, phone: r.phone, sku: r.sku, size: r.size, items: r.items, heat: r.heat }),
+    status: gateWonStatus(r.status, { paid: !!r.paid, proofStatus: r.proof_status || r.proofStatus }),
     note: r.note,
+    lostReason: r.lost_reason || r.lostReason || "",
     owner: r.owner,
     salesman: r.salesman,
     paid: !!r.paid,
@@ -482,7 +551,10 @@ async function patchCloudLead(id, patch) {
     ["size", "size"],
     ["qty", "qty"],
     ["source", "source"],
+    ["leadSource", "lead_source"],
+    ["heat", "heat"],
     ["status", "status"],
+    ["lostReason", "lost_reason"],
     ["note", "note"],
     ["paid", "paid"],
     ["paidAmount", "paid_amount"],
@@ -616,6 +688,19 @@ module.exports = async function handler(req, res) {
         id: id,
         updatedAt: b.updatedAt || Date.now()
       });
+      // Never overwrite leadSource on convert/status change if already set
+      if (prev && (prev.leadSource || prev.lead_source)) {
+        lead.leadSource = prev.leadSource || prev.lead_source;
+      } else if (!lead.leadSource && !lead.lead_source) {
+        lead.leadSource = mapLegacyLeadSource(lead.source || "manual");
+      } else {
+        lead.leadSource = mapLegacyLeadSource(lead.leadSource || lead.lead_source);
+      }
+      lead.heat = lead.heat || heatOfLead(lead);
+      lead.status = gateWonStatus(lead.status, lead);
+      if (String(lead.status) === "lost" && !String(lead.lostReason || lead.lost_reason || "").trim()) {
+        lead.lostReason = "unspecified";
+      }
       if (Object.prototype.hasOwnProperty.call(b, "owner") || Object.prototype.hasOwnProperty.call(b, "salesman")) {
         const own = sellerOf(lead.owner) || sellerOf(lead.salesman) || sellerOf(b.owner) || sellerOf(b.salesman);
         lead.owner = own;
